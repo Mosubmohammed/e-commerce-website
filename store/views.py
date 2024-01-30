@@ -8,6 +8,7 @@ from .forms import *
 
 
 
+
 # Create your views here.
 def home(request):
     products=Product.objects.all()
@@ -32,6 +33,23 @@ def login_user(request):
         
     else:    
         return render(request, 'login.html',{})
+    
+    
+def update_user(request):
+	if request.user.is_authenticated:
+		current_user = User.objects.get(id=request.user.id)
+		user_form = UpdateUserForm(request.POST or None, instance=current_user)
+
+		if user_form.is_valid():
+			user_form.save()
+
+			login(request, current_user)
+			messages.success(request, "User Has Been Updated!!")
+			return redirect('home')
+		return render(request, "update_user.html", {'user_form':user_form})
+	else:
+		messages.success(request, "You Must Be Logged In To Access That Page!!")
+		return redirect('home')
 
 def logout_user(request):
     logout(request)
@@ -39,22 +57,23 @@ def logout_user(request):
     return redirect('home')
 
 def register_user(request):
-    form=SignUpForm()
-    if request.method =='POST':
-        form=SignUpForm(request.POST)
-        if form.is_valid():
-            form.save()
-            username=form.cleaned_data['username']
-            password=form.cleaned_data['password1']
-            user=authenticate(username=username, password=password)
-            login(request, user)
-            messages.success(request,('You have Registered Successfully!! '))
-            return redirect('home')
-        else:
-            messages.success(request,('There was a problem registering, please try again..'))
-            return redirect('register')
-    else:    
-        return render(request, 'register.html',{'form': form})
+	form = SignUpForm()
+	if request.method == "POST":
+		form = SignUpForm(request.POST)
+		if form.is_valid():
+			form.save()
+			username = form.cleaned_data['username']
+			password = form.cleaned_data['password1']
+			# log in user
+			user = authenticate(username=username, password=password)
+			login(request, user)
+			messages.success(request, ("You Have Registered Successfully!! Welcome!"))
+			return redirect('home')
+		else:
+			messages.success(request, ("Whoops! There was a problem Registering, please try again..."))
+			return redirect('register')
+	else:
+		return render(request, 'register.html', {'form':form})
     
     
 def product(request,pk):
@@ -74,4 +93,31 @@ def category(request, foo):
 	except:
 		messages.success(request, ("That Category Doesn't Exist..."))
 		return redirect('home')
+def category_summary(request):
+    categories = Category.objects.all()
+    
+    return render(request, 'category_summary.html', {'categories': categories})
+
+def update_password(request):
+    if request.user.is_authenticated:
+        current_user=request.user
+        if request.method == 'POST':
+            form=ChangePasswordForm(current_user, request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, ("Your Password Has Been Changed!!"))
+                login(request,current_user)
+                return redirect('update_user')
+            else:
+                for error in list(form.errors.values()):
+                    messages.error(request, error)
+                    return redirect('update_password')
+        else:
+            form=ChangePasswordForm(current_user)
+            return render(request, 'update_password.html', {'form': form})
+    else:
+        messages.success(request, ("You Must Be Logged In To Access That Page!!"))
+        return redirect('home')
+    
+
     
